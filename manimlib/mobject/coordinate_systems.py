@@ -464,17 +464,28 @@ class Axes(VGroup, CoordinateSystem):
             ),
             length=width,
         )
+
+        # fix y_axis number alignment
+        merged_y_axis_config = merge_dicts_recursively(
+            self.default_axis_config,
+            self.default_y_axis_config,
+            axis_config,
+            y_axis_config
+        )
+
         self.y_axis = self.create_axis(
             self.y_range,
             axis_config=merge_dicts_recursively(
-                self.default_axis_config,
-                self.default_y_axis_config,
-                axis_config,
-                y_axis_config
+                merged_y_axis_config,
+                dict(include_numbers=False)
             ),
             length=height,
         )
         self.y_axis.rotate(90 * DEG, about_point=ORIGIN)
+
+        if merged_y_axis_config["include_numbers"]: 
+            self.y_axis.add_numbers(excluding=self.y_axis.numbers_to_exclude)
+        
         # Add as a separate group in case various other
         # mobjects are added to self, as for example in
         # NumberPlane below
@@ -526,9 +537,11 @@ class Axes(VGroup, CoordinateSystem):
         return self.coordinate_labels
 
 
+
+
 class ThreeDAxes(Axes):
     dimension: int = 3
-    default_z_axis_config: dict = dict()
+    default_z_axis_config: dict = dict(line_to_number_direction=LEFT)
 
     def __init__(
         self,
@@ -543,19 +556,31 @@ class ThreeDAxes(Axes):
         Axes.__init__(self, x_range, y_range, **kwargs)
 
         self.z_range = full_range_specifier(z_range)
+
+        # fix z_axis number alignment
+        merged_z_axis_config = merge_dicts_recursively(
+            self.default_axis_config,
+            self.default_z_axis_config,
+            kwargs.get("axis_config", {}),
+            z_axis_config
+        )
+
         self.z_axis = self.create_axis(
             self.z_range,
             axis_config=merge_dicts_recursively(
-                self.default_axis_config,
-                self.default_z_axis_config,
-                kwargs.get("axis_config", {}),
-                z_axis_config
+                merged_z_axis_config,
+                dict(include_numbers=False)
             ),
             length=depth,
         )
-        self.z_axis.rotate(-PI / 2, UP, about_point=ORIGIN)
+        self.z_axis.rotate(PI / 2, about_point=ORIGIN)
+
+        if merged_z_axis_config["include_numbers"]:
+            self.z_axis.add_numbers(excluding=merged_z_axis_config["numbers_to_exclude"])
+
+        self.z_axis.rotate(PI / 2, RIGHT, about_point=ORIGIN)
         self.z_axis.rotate(
-            angle_of_vector(z_normal), OUT,
+            angle_of_vector(z_normal)+PI/2, OUT,
             about_point=ORIGIN
         )
         self.z_axis.shift(self.x_axis.n2p(0))
@@ -613,7 +638,6 @@ class ThreeDAxes(Axes):
             surface.stretch(axis.get_unit_size(), dim, about_point=ORIGIN)
         surface.shift(self.get_origin())
         return surface
-
 
 class NumberPlane(Axes):
     default_axis_config: dict = dict(
